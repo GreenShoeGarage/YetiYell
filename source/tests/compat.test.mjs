@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {validateHello} from '../dist/compat.mjs';import {checkTarget} from '../dist/flasher.mjs';
+const hello={app:'YetiYell',protocol:1,chip:'esp32s3',profiles:['tile'],maxDuration:120,heartbeatTimeoutMs:6000};
+test('handshake normalizes supported chip names and verifies firmware stop limits',()=>{assert.equal(validateHello(hello).chip,'ESP32-S3');for(const patch of [{chip:'esp32s2'},{heartbeatTimeoutMs:60000},{maxDuration:999},{protocol:2},{profiles:[{}]}])assert.throws(()=>validateHello({...hello,...patch}));});
+test('flashing rejects chip and flash-size mismatches before writing',()=>{checkTarget('ESP32-S3','8MB',{chip:'ESP32-S3',flashSize:'8MB'});assert.throws(()=>checkTarget('ESP32','4MB',{chip:'ESP32-S3',flashSize:'8MB'}),/No firmware was written/);assert.throws(()=>checkTarget('ESP32-S3','4MB',{chip:'ESP32-S3',flashSize:'8MB'}),/No firmware was written/);});

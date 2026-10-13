@@ -1,0 +1,19 @@
+{
+  "name": "yetiyell",
+  "version": "1.0.0-rc.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "release": "python3 scripts/package.py"
+  },
+  "dependencies": {
+    "esptool-js": "0.7.0",
+    "crypto-js": "4.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "jsdom": "26.1.0"
+  }
+}

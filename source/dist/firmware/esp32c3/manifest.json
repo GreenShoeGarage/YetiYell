@@ -1,0 +1,45 @@
+{
+  "name": "YetiYell",
+  "version": "1.0.0-rc.1",
+  "protocol": 1,
+  "board": "esp32c3",
+  "chip": "ESP32-C3",
+  "flashSize": "4MB",
+  "flashMode": "dio",
+  "flashFreq": "40m",
+  "parts": [
+    {
+      "file": "bootloader.bin",
+      "offset": 0,
+      "size": 12464,
+      "sha256": "551199f81b3cc7d8dee7f7ec71679c499780a94aed306c39fda6351587918f01"
+    },
+    {
+      "file": "partitions.bin",
+      "offset": 32768,
+      "size": 3072,
+      "sha256": "aaae2888c5a6a348004b5b436f47abb25ae32e72d9003902955a998eda723edd"
+    },
+    {
+      "file": "boot_app0.bin",
+      "offset": 57344,
+      "size": 8192,
+      "sha256": "f94c5d786a7a8fab06ac5d10e33bf37711a6697636dc037559ea19cc410a17f0"
+    },
+    {
+      "file": "firmware.bin",
+      "offset": 65536,
+      "size": 927728,
+      "sha256": "84a77552a1728be95f848c0b0c21ec6a6d03eba1fc0ed88652689daec0d8bd37"
+    }
+  ],
+  "hardwareValidated": false,
+  "catalog": "c332e3f4c4c0ce92",
+  "build": {
+    "platform": "espressif32@6.10.0",
+    "arduino": "2.0.17",
+    "nimble": "1.4.3",
+    "arduinojson": "6.21.5",
+    "usb": "UART"
+  }
+}

@@ -1,0 +1,1 @@
+To enable the in-app package download on your host, copy the original YetiYell-v1.0.0-rc.1.zip into this downloads directory. All operating features work without this optional copy. The ZIP does not contain a recursive copy of itself.

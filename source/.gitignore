@@ -1,0 +1,6 @@
+node_modules/
+firmware/.pio/
+__pycache__/
+*.tar.gz
+*.zip
+!dist/downloads/*.zip

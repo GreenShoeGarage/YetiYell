@@ -1,0 +1,45 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> yetiyell@1.0.0-rc.1 test
+> node --test tests/*.test.mjs
+
+✔ connected app completes a run, retains manual evidence separation, then cancels a hidden suite (686.467491ms)
+✔ firmware manifest matches every packaged byte and the ESP32 memory map (8.580825ms)
+✔ all static runtime resources are local and present (335.579393ms)
+✔ generated firmware catalog and browser profile IDs agree (1.169654ms)
+✔ handshake normalizes supported chip names and verifies firmware stop limits (2.288221ms)
+✔ flashing rejects chip and flash-size mismatches before writing (1.133248ms)
+✔ profile coverage and negative controls remain explicit (2.790662ms)
+✔ settings reject unsupported power, invalid numeric input and long transmissions (2.491653ms)
+✔ CSV neutralizes formula cells and quotes multiline notes (0.442037ms)
+✔ workspace import validates records and never turns an imported run into a live transmission (1.199645ms)
+✔ expected observations do not become automatic positive detections (0.504104ms)
+✔ real receiver SD row structure parses UTC, uptime and GPS extensions; bad rows are reported (4.067528ms)
+✔ correlation uses MAC and time, requires uptime alignment, and leaves missing evidence unresolved (0.747462ms)
+✔ overlapping runs and conflicting types are flagged rather than silently attributed (0.325232ms)
+✔ comparison distinguishes regressions, missing settings and unreviewed observations (0.627819ms)
+✔ browser flasher loads verified binaries and refuses altered firmware bytes (23.786976ms)
+✔ all three board manifests load, and swapping target manifests is rejected (30.819138ms)
+✔ offline worker caches complete local assets and only activates an update on request (6.050389ms)
+✔ USB handshake verifies firmware and stops an existing run before use (9.964868ms)
+✔ wrong firmware releases the port and never starts heartbeat transmission (0.775262ms)
+✔ split JSON and boot noise do not confuse command acknowledgements (13.729103ms)
+✔ device silence rejects timed-out commands without a success result (20.588098ms)
+✔ 100-step suite retains order and quiet gaps without manufacturing observations (7.460543ms)
+✔ pause finishes the current step and requires an explicit resume (13.952156ms)
+✔ cancel during a quiet gap never starts the next step (3.970044ms)
+✔ partial runs interrupt a suite; overlapping starts are rejected (1.643313ms)
+✔ USB loss while paused terminates the suite without requiring resume (2.842447ms)
+✔ DOM interactions: profile selection, filtering, result import visibility, and navigation (486.606593ms)
+✔ workspace v1 migrates without losing runs; live work never resumes after reload (11.866094ms)
+✔ workspace round-trips 100-step sessions, suites, benches and operator acceptance (0.849598ms)
+✔ suite limits, board-specific power and imported record shapes are enforced (0.932844ms)
+✔ workspace merging preserves existing data and refuses overflow atomically (0.406707ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1489.276326

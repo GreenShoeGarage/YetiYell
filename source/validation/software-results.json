@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0-rc.1",
+  "date": "2026-10-13",
+  "nodeTests": {
+    "passed": 32,
+    "failed": 0
+  },
+  "firmwareBuilds": [
+    "esp32dev",
+    "esp32c3",
+    "esp32s3"
+  ],
+  "upstreamOracle": {
+    "profileChecks": 42,
+    "boundaryChecks": 7,
+    "commit": "44ddd59e11940cb47ac5e223e383501936d50c60"
+  },
+  "nativePolicy": "passed",
+  "physicalHardware": "not tested",
+  "realBrowser": "not tested",
+  "RF": "not tested",
+  "stableReleaseApproved": false
+}
