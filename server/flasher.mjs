@@ -1,11 +1,11 @@
 import {ESPLoader,Transport,md5} from './vendor/esptool.bundle.mjs';
 import {BOARDS,normalizeChip} from './compat.mjs';
-import {VERSION} from './core.mjs';
+import {FIRMWARE_VERSION} from './core.mjs';
 export async function loadRelease(boardId='esp32dev'){
  const board=BOARDS[boardId];if(!board)throw Error('Unknown board target.');
  const r=await fetch(board.directory+'manifest.json',{cache:'no-cache'});if(!r.ok)throw Error('Bundled firmware is missing. Restore the complete YetiYell server folder.');
  const manifest=await r.json();
- if(manifest.name!=='YetiYell'||manifest.chip!==board.chip||manifest.version!==VERSION||manifest.protocol!==1||manifest.flashSize!==board.flashSize||manifest.flashFreq!==board.flashFreq||manifest.flashMode!=='dio'||!Array.isArray(manifest.parts)||manifest.parts.length!==4)throw Error('Firmware does not match this app or board. Reload the complete release.');
+ if(manifest.name!=='YetiYell'||manifest.chip!==board.chip||manifest.version!==FIRMWARE_VERSION||manifest.protocol!==1||manifest.flashSize!==board.flashSize||manifest.flashFreq!==board.flashFreq||manifest.flashMode!=='dio'||!Array.isArray(manifest.parts)||manifest.parts.length!==4)throw Error('Firmware does not match this app or board. Reload the complete release.');
  if(manifest.parts.map(p=>p.offset).join(',')!==[board.boot,32768,57344,65536].join(','))throw Error('Invalid firmware memory map.');
  const files=[];let end=0;
  for(const part of manifest.parts){

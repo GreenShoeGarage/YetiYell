@@ -20,4 +20,6 @@ The start command establishes the initial heartbeat. While active, send `ping` m
 
 This is a trusted local USB interface, not a network API. Do not expose serial ports to an unauthenticated remote service.
 
-Protocol 1 remains newline JSON. The v1.0 app requires its exact firmware version and catalog before enabling Start. Suites are browser orchestration: each step sends the same start/heartbeat/stop commands. Firmware never automatically advances or resumes a sequence. UART0 is used on all three builds; native USB CDC is disabled.
+Protocol 1 remains newline JSON. The v1.0 app requires the exact firmware version declared by `FIRMWARE_VERSION` (also `release.json` → `firmwareVersion`) and its profile catalog before enabling Start. Browser app rc.4 requires firmware rc.4, which fixes BLE startup. Boards running rc.1 remain connected for identification but cannot start tests until reflashed. App and firmware version numbers may differ for browser-only fixes. Suites are browser orchestration: each step sends the same start/heartbeat/stop commands. Firmware never automatically advances or resumes a sequence. UART0 is used on all three builds; native USB CDC is disabled.
+
+Radio-start rejection replies retain `event: ack`, `ok: false`, and an explanatory `error`. rc.4 identifies Wi-Fi setup stages and ESP-IDF return codes, BLE random-address errors, or BLE advertising-start failures. Error-level stack logs may appear between JSON lines; clients continue to ignore non-JSON lines. A failed start never emits `started`.

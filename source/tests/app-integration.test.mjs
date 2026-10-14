@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {JSDOM} from 'jsdom';import {VERSION} from '../dist/core.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {JSDOM} from 'jsdom';import {FIRMWARE_VERSION} from '../dist/core.mjs';
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn){for(let n=0;n<100;n++){if(fn())return;await wait(5);}throw Error('State transition timed out');}
 test('connected app completes a run, retains manual evidence separation, then cancels a hidden suite',async()=>{
@@ -7,7 +7,7 @@ test('connected app completes a run, retains manual evidence separation, then ca
  let controller,active=null;const commands=[];
  const send=m=>controller.enqueue(new TextEncoder().encode(JSON.stringify(m)+'\n'));
  const port={readable:new ReadableStream({start(c){controller=c;}}),writable:new WritableStream({write(bytes){const m=JSON.parse(new TextDecoder().decode(bytes));commands.push(m);
-  if(m.cmd==='hello')return send({event:'hello',id:m.id,app:'YetiYell',protocol:1,chip:'esp32',board:'esp32dev',version:VERSION,catalog:data.catalog,maxDuration:120,heartbeatTimeoutMs:6000,profiles:data.profiles.map(p=>p.id)});
+  if(m.cmd==='hello')return send({event:'hello',id:m.id,app:'YetiYell',protocol:1,chip:'esp32',board:'esp32dev',version:FIRMWARE_VERSION,catalog:data.catalog,maxDuration:120,heartbeatTimeoutMs:6000,profiles:data.profiles.map(p=>p.id)});
   send({event:'ack',id:m.id,ok:true});
   if(m.cmd==='start'){active=m;send({event:'started',run:m.run,profile:m.profile,running:true,mac:'C2:59:59:00:00:01',remainingMs:5000});}
   if(m.cmd==='stop'&&active){send({event:'stopped',run:active.run,reason:'user',running:false});active=null;}

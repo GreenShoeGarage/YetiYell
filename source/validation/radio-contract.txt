@@ -1,0 +1,1 @@
+NimBLE 1.4.3 contract: old HCI mode rejected; production GAP mode accepted; invalid high-duty mode rejected.

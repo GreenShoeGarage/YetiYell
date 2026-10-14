@@ -2,12 +2,14 @@
 """Static release consistency gate. Run functional tests separately first."""
 import json,pathlib,hashlib,re
 root=pathlib.Path(__file__).resolve().parents[1]
-release=json.loads((root/'release.json').read_text());v=release['version']
+release=json.loads((root/'release.json').read_text());v=release['version'];fv=release.get('firmwareVersion',v)
 assert json.loads((root/'package.json').read_text())['version']==v
 assert json.loads((root/'package-lock.json').read_text())['version']==v
 assert f"VERSION='{v}'" in (root/'dist/core.mjs').read_text()
-assert f'VERSION = "{v}"' in (root/'firmware/src/main.cpp').read_text()
+assert f'VERSION = "{fv}"' in (root/'firmware/src/main.cpp').read_text()
 assert v in (root/'dist/index.html').read_text()
+assert f"FIRMWARE_VERSION='{fv}'" in (root/'dist/core.mjs').read_text()
+assert (root/'dist/app.js').exists() and v in (root/'dist/app.js').read_text()
 assert f"yetiyell-{v}" in (root/'dist/sw.js').read_text()
 if '-' not in v:
  assert release.get('hardwareValidated') is True,'Stable release blocked: physical acceptance is not validated.'
@@ -21,7 +23,7 @@ assert catalog['catalog']==hashlib.sha256(json.dumps(catalog['profiles'],sort_ke
 assert catalog['catalog'] in (root/'firmware/src/profiles.h').read_text()
 for env,chip,offset,capacity,freq,chipid in [('esp32dev','ESP32',4096,'4MB','40m',0),('esp32c3','ESP32-C3',0,'4MB','40m',5),('esp32s3','ESP32-S3',0,'8MB','80m',9)]:
  folder=root/'dist/firmware'/('' if env=='esp32dev' else env);m=json.loads((folder/'manifest.json').read_text())
- assert (m['version'],m['chip'],m['flashSize'],m['flashFreq'],m['catalog'])==(v,chip,capacity,freq,catalog['catalog'])
+ assert (m['version'],m['chip'],m['flashSize'],m['flashFreq'],m['catalog'])==(fv,chip,capacity,freq,catalog['catalog'])
  assert m['hardwareValidated']==release['hardwareValidated']
  assert [p['offset'] for p in m['parts']]==[offset,32768,57344,65536]
  end=0
@@ -29,7 +31,7 @@ for env,chip,offset,capacity,freq,chipid in [('esp32dev','ESP32',4096,'4MB','40m
   b=(folder/p['file']).read_bytes();assert p['offset']>=end;end=p['offset']+len(b)
   assert len(b)==p['size'] and hashlib.sha256(b).hexdigest()==p['sha256']
   if p['file'] in ['bootloader.bin','firmware.bin']:assert b[0]==0xe9 and int.from_bytes(b[12:14],'little')==chipid
-  if p['file']=='firmware.bin':assert v.encode() in b
+  if p['file']=='firmware.bin':assert fv.encode() in b
  assert end<=0x310000
 # Ensure all local ES module imports and registered cache URLs resolve.
 for p in (root/'dist').glob('*.mjs'):

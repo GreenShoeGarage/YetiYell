@@ -1,6 +1,6 @@
 {
   "name": "YetiYell",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.4",
   "protocol": 1,
   "board": "esp32c3",
   "chip": "ESP32-C3",
@@ -29,8 +29,8 @@
     {
       "file": "firmware.bin",
       "offset": 65536,
-      "size": 927728,
-      "sha256": "84a77552a1728be95f848c0b0c21ec6a6d03eba1fc0ed88652689daec0d8bd37"
+      "size": 936992,
+      "sha256": "9d7eea98efaaa3aa81f3bc552b74955a1d33110891f611ff72bb3c92434d08b9"
     }
   ],
   "hardwareValidated": false,

@@ -1,13 +1,14 @@
-import {VERSION,STORAGE_KEY,validateSettings,reportCSV,makeRun,matchVerdict} from './core.mjs';
+import {VERSION,FIRMWARE_VERSION,STORAGE_KEY,validateSettings,reportCSV,makeRun,matchVerdict} from './core.mjs';
 import {emptyWorkspace,restoreWorkspace,mergeWorkspace} from './workspace.mjs';
 import {initWorkflow} from './workflow-ui.mjs';
 import {friendlyError} from './compat.mjs';
+import {usbEnvironment,requestUSBPort,usbFailure} from './usb.mjs';
 import {YetiSerial} from './serial.mjs';
 const $=id=>document.getElementById(id);
 const all=selector=>[...document.querySelectorAll(selector)];
 let profiles=[],selected=null,filter='all',workspace=emptyWorkspace(),device=null,activeRun=null,busy=false,flashBusy=false,release=null,flasher=null,reviewId=null,lines=[],storageOK=true;
-let lab=null,resolveRun=null,catalogHash='',pendingWorker=null;
-const supported=!!navigator.serial&&globalThis.isSecureContext;
+let lab=null,resolveRun=null,catalogHash='',pendingWorker=null,pickingFor='',appReady=false,lastUSBError=null;
+
 const serial=new YetiSerial({onEvent:handleEvent,onLine:log,onDisconnect:disconnected});
 function message(text,error=false){$('message').textContent=text;$('message').classList.toggle('error',error);$('message').hidden=!text;}
 function log(text){const entry=new Date().toLocaleTimeString()+'  '+String(text).trim();lines.push(entry);if(lines.length>500)lines.shift();$('console').textContent=lines.join('\n');$('console').scrollTop=$('console').scrollHeight;}
@@ -41,22 +42,24 @@ function selectProfile(profile){
  renderProfiles();updateControls();
 }
 function updateControls(){
- const locked=busy||flashBusy||!!activeRun||!!lab?.runner.active;
- $('connectButton').disabled=!supported||busy||flashBusy||!!lab?.runner.active;
+ const locked=busy||flashBusy||!!pickingFor||!!activeRun||!!lab?.runner.active;
+ $('connectButton').disabled=busy||flashBusy||!!pickingFor||!!lab?.runner.active;
  $('connectButton').textContent=device?'Disconnect':'Connect ESP32 ↗';
- $('connectionStatus').textContent=flashBusy?'Flashing…':busy&&!device?'Connecting…':device?'Connected':'Not connected';
+ $('connectionStatus').textContent=pickingFor?'Choose a port…':flashBusy?'Flashing…':busy&&!device?'Connecting…':device?'Connected':'Not connected';
  $('connectionDot').classList.toggle('connected',!!device);
  $('deviceDescription').textContent=device?'YetiYell '+device.version+' · '+device.chip:'Connect a flashed ESP32 to put the bench to work.';
+ $('firmwareUpdateNotice').hidden=deviceReady();
  $('consoleLabel').textContent=flashBusy?'FLASHING':activeRun?'TRANSMITTING':device?'USB CONNECTED':'WAITING FOR DEVICE';
  $('startButton').disabled=!deviceReady()||locked||!device.profiles?.includes(selected?.id);
  $('stopButton').disabled=!activeRun||flashBusy;
- $('flashButton').disabled=!supported||locked||!!device||!release||!$('flashConsent').checked;
+ $('flashButton').disabled=locked||!!device||!release||!$('flashConsent').checked;
+ $('flashHint').textContent=device?'Disconnect the board before flashing.':!release?'Waiting for the bundled firmware to load.':!$('flashConsent').checked?'Select the firmware replacement checkbox to enable flashing.':'Click Choose board & flash to open the browser’s USB port chooser.';
  $('flashConsent').disabled=locked||!!device;
  for(const id of ['duration','power','detectorVersion','boardSelect','flashSpeed','benchNotes'])$(id).disabled=locked;
  $('interval').disabled=locked||selected?.radio==='Wi-Fi';$('channel').disabled=locked||selected?.radio==='BLE';
  $('startButton').textContent=activeRun?'Transmitting…':'▶ Transmit for '+$('duration').value+' seconds';
  $('startHint').textContent=!device?'Connect your ESP32 to start.':!device.profiles?.includes(selected?.id)?'Update your transmitter firmware for this profile.':activeRun?'Keep this tab visible. The board stops automatically.':!deviceReady()?'Install the bundled firmware to match this app and profile catalog.':'Ready. The radio is idle until you start a test.';
- renderProfiles();lab?.refresh();
+ renderProfiles();lab?.refresh();refreshUSB();
 }
 function renderResults(){
  const runs=workspace.runs;$('resultCount').textContent=runs.length;$('statTotal').textContent=runs.length;
@@ -98,14 +101,42 @@ function handleEvent(event){
  if(event.event==='stopped')finishRun(event.reason,event.reason==='complete'?'completed':event.reason==='user'?'stopped':'interrupted');
 }
 function disconnected(reason){
- device=null;busy=false;if(lab?.runner.active)lab.runner.interrupt(reason).catch(()=>{});if(activeRun)finishRun(reason,'interrupted');updateControls();if(reason!=='Disconnected')message(reason+' Active radio tests stop within 6 seconds of the last heartbeat.',true);log(reason);
+ const wasRunning=!!activeRun;device=null;busy=false;if(lab?.runner.active)lab.runner.interrupt(reason).catch(()=>{});if(activeRun)finishRun(reason,'interrupted');updateControls();if(reason!=='Disconnected')message(reason+(wasRunning?' Active radio tests stop within 6 seconds of the last heartbeat.':''),true);log(reason);
 }
-$('connectButton').addEventListener('click',async()=>{
+function refreshUSB(){
+ const status=usbEnvironment();$('usbStatus').textContent=status.ok?'USB port picker available':status.title;
+ $('usbStatus').classList.toggle('error',!status.ok);
+ $('compatibility').hidden=status.ok&&!status.embedded;
+ $('compatibility').textContent=status.ok?status.detail:status.title+'. '+status.detail;
+ const url=new URL('./',window.location.href);for(const id of ['openUSBTab','usbHelpTab'])$(id).href=url.href;
+}
+function showUSBHelp(error){
+ const status=error?usbFailure(error):usbEnvironment();
+ $('usbHelpTitle').textContent=status.title;$('usbHelpText').textContent=status.detail;
+ $('usbDeviceRecovery').hidden=!status.deviceRecovery;$('usbBrowserRecovery').hidden=!!status.deviceRecovery;
+ $('usbCopyStatus').textContent='';
+ $('usbDiagnostics').textContent=JSON.stringify({app:VERSION,url:window.location.href,...status,lastError:error?{name:error.name,message:error.message,code:error.code}:null,serial:error?.serial||null},null,2);
+ const dialog=$('usbHelp');if(!dialog.open)dialog.showModal();
+}
+$('checkUSB').addEventListener('click',()=>showUSBHelp(lastUSBError));
+$('closeUSBHelp').addEventListener('click',()=>$('usbHelp').close());
+$('usbGoSetup').addEventListener('click',()=>{$('usbHelp').close();tab('setup');$('flashConsent').focus();});
+$('usbViewConsole').addEventListener('click',()=>{$('usbHelp').close();$('consolePanel').open=true;$('consolePanel').scrollIntoView?.({block:'center',behavior:'smooth'});});
+$('usbRetryReset').addEventListener('click',()=>{$('usbHelp').close();connectESP(true);});
+$('copyUSBDiagnostics').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('usbDiagnostics').textContent);$('usbCopyStatus').textContent='Connection details copied.';}catch{$('usbCopyStatus').textContent='Select and copy the connection details below.';}});
+$('connectButton').addEventListener('click',()=>connectESP());
+async function connectESP(reset=false){
+ if(pickingFor||busy||flashBusy||lab?.runner.active)return;
  if(device){try{await serial.command('stop');}catch{}await serial.disconnect();return;}
- try{const port=await navigator.serial.requestPort();busy=true;updateControls();device=await serial.connect(port);message(deviceReady()?'ESP32 connected. Choose a profile to begin.':'Connected firmware differs from this release. Disconnect and install the bundled firmware.',!deviceReady());tab('operate');}
- catch(e){message(friendlyError(e),true);}finally{busy=false;updateControls();}
-});
-function deviceReady(){return !!device&&device.version===VERSION&&device.catalog===catalogHash;}
+ if(!appReady){message('The app has not finished loading. Check the startup message above.',true);return;}
+ try{
+  const selection=requestUSBPort();lastUSBError=null;pickingFor='connect';updateControls();message('Choose the board’s USB-to-UART port (for example CP2102 or CH340).');
+  const port=await selection;pickingFor='';busy=true;updateControls();message('USB selected. Waiting for the installed YetiYell firmware…');device=await serial.connect(port,{reset});
+  message(deviceReady()?'ESP32 connected. Choose a profile to begin.':'Board firmware '+device.version+' does not match the required '+FIRMWARE_VERSION+'. Disconnect, open Set up, and flash the bundled radio-start fix.',!deviceReady());tab(deviceReady()?'operate':'setup');
+ }catch(e){lastUSBError=e;message(friendlyError(e),true);showUSBHelp(e);}
+ finally{pickingFor='';busy=false;updateControls();}
+}
+function deviceReady(){return !!device&&device.version===FIRMWARE_VERSION&&device.catalog===catalogHash;}
 async function stopTransmission(){
  if(!device)return;
  try{if(activeRun)activeRun.stopRequested=true;await serial.command('stop');if(activeRun){await serial.command('status');if(activeRun)throw Error('Board did not confirm an idle radio.');}}
@@ -133,14 +164,14 @@ window.addEventListener('pagehide',()=>{if(lab?.runner.active)lab.runner.cancel(
 window.addEventListener('beforeunload',e=>{if(flashBusy||activeRun||lab?.runner.active){e.preventDefault();e.returnValue='';}});
 $('flashConsent').addEventListener('change',updateControls);
 $('flashButton').addEventListener('click',async()=>{
- if(!release||!$('flashConsent').checked||device||flashBusy)return;
+ if(!release||!$('flashConsent').checked||device||flashBusy||busy||pickingFor||activeRun||lab?.runner.active)return;
  try{
-  const port=await navigator.serial.requestPort();flashBusy=true;updateControls();$('flashProgressBox').hidden=false;$('flashProgress').value=0;$('flashState').textContent='Connecting to the bootloader…';$('consolePanel').open=true;
+  const selection=requestUSBPort();pickingFor='flash';updateControls();message('Choose your ESP32 USB serial port in the browser window.');const port=await selection;pickingFor='';flashBusy=true;updateControls();$('flashProgressBox').hidden=false;$('flashProgress').value=0;$('flashState').textContent='Connecting to the bootloader…';$('consolePanel').open=true;
   await flasher.flashBoard(port,release,{log,baudrate:Number($('flashSpeed').value),progress:(i,w,total)=>{const fraction=(i+w/total)/release.files.length;$('flashProgress').value=fraction*100;$('flashState').textContent='Writing firmware '+Math.round(fraction*100)+'%';}});
   $('flashProgress').value=100;$('flashState').textContent='Installed and verified. Ready to connect.';$('flashConsent').checked=false;
   message('YetiYell installed. Press Connect ESP32 to operate it. If it does not answer, tap EN/RESET once.');
- }catch(e){$('flashState').textContent='Installation did not complete.';message(friendlyError(e),true);log(e.message);}
- finally{flashBusy=false;updateControls();}
+ }catch(e){$('flashState').textContent='Installation did not complete.';message(friendlyError(e),true);log(e.message);showUSBHelp(e);}
+ finally{pickingFor='';flashBusy=false;updateControls();}
 });
 $('duration').addEventListener('input',updateControls);
 $('detectorVersion').addEventListener('change',()=>{workspace.detectorVersion=$('detectorVersion').value;save();});
@@ -174,18 +205,19 @@ async function prepareOffline(){
 $('cacheButton').addEventListener('click',()=>prepareOffline().catch(e=>$('cacheStatus').textContent=e.message));
 async function init(){
  for(let i=1;i<=11;i++){const o=document.createElement('option');o.value=i;o.textContent='Channel '+i;$('channel').append(o);} $('channel').value='6';
- if(!supported){$('compatibility').hidden=false;$('compatibility').textContent='USB flashing and control require desktop Chrome or Edge over HTTPS or localhost. You can explore profiles and manage results here.';}
+ refreshUSB();
  try{
   const response=await fetch('./profiles.json');if(!response.ok)throw Error('Profile library is missing.');const data=await response.json();profiles=data.profiles;catalogHash=data.catalog;
   try{const raw=localStorage.getItem(STORAGE_KEY);if(raw)workspace=restoreWorkspace(JSON.parse(raw),profiles);}catch(e){message('Saved workspace could not be restored: '+e.message,true);}
   for(const r of workspace.runs)if(['running','starting'].includes(r.state)){r.state='interrupted';r.reason='Page reloaded before the run ended';}
   $('detectorVersion').value=workspace.detectorVersion;selectProfile(profiles[0]);renderResults();
   lab=initWorkflow({profiles,workspace:()=>workspace,save,message,download,tab,device:()=>device,ready:deviceReady,idle:()=>!activeRun&&!busy&&!flashBusy,transmit:transmitStep,stop:stopTransmission,refresh:updateControls,results:renderResults});save();
- }catch(e){message(e.message,true);return;}
+ }catch(e){message(e.message,true);window.yetiBoot?.fail('YetiYell could not load its workspace or profiles: '+e.message);return;}
+ appReady=true;window.yetiBoot?.ready();updateControls();
  try{flasher=await import('./flasher.mjs');release=await flasher.loadRelease();$('releaseVersion').textContent='v'+release.manifest.version+' · ready';}
  catch(e){$('releaseVersion').textContent='Unavailable';log(e.message);message(e.message,true);}
  updateControls();
- if(supported&&'serviceWorker'in navigator)registerWorker().catch(e=>log('Offline cache: '+e.message));
+ if(globalThis.isSecureContext&&window.location.protocol!=='file:'&&'serviceWorker'in navigator)registerWorker().catch(e=>log('Offline cache: '+e.message));
 }
 $('boardSelect').addEventListener('change',async()=>{const target=$('boardSelect').value;release=null;updateControls();$('releaseVersion').textContent='Checking firmware…';try{const loaded=await flasher.loadRelease(target);if($('boardSelect').value!==target)return;release=loaded;$('releaseVersion').textContent='v'+release.manifest.version+' · ready';}catch(e){$('releaseVersion').textContent='Unavailable';message(e.message,true);}updateControls();});
 async function registerWorker(){
@@ -193,5 +225,5 @@ async function registerWorker(){
  function waiting(){if(reg.waiting){pendingWorker=reg.waiting;$('updateNotice').hidden=false;}}
  waiting();reg.addEventListener('updatefound',()=>{reg.installing?.addEventListener('statechange',waiting);});return reg;
 }
-$('applyUpdate').addEventListener('click',async()=>{if(activeRun||flashBusy||busy||lab?.runner.active){message('Finish flashing or stop the active session before updating.',true);return;}if(!pendingWorker)return;await serial.disconnect();navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload(),{once:true});pendingWorker.postMessage({type:'APPLY_UPDATE'});});
-init();
+$('applyUpdate').addEventListener('click',async()=>{if(activeRun||flashBusy||busy||pickingFor||lab?.runner.active){message('Finish flashing or stop the active session before updating.',true);return;}if(!pendingWorker)return;await serial.disconnect();navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload(),{once:true});pendingWorker.postMessage({type:'APPLY_UPDATE'});});
+init().catch(e=>{message(e.message,true);window.yetiBoot?.fail('YetiYell could not start: '+e.message);});

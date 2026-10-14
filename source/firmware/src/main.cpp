@@ -7,10 +7,12 @@
 #include "profiles.h"
 #include "policy.h"
 
-static const char* VERSION = "1.0.0-rc.1";
+static const char* VERSION = "1.0.0-rc.4";
 static NimBLEAdvertising* advertiser = nullptr;
 static bool running = false;
 static bool wifiReady = false;
+static esp_err_t wifiInitError = ESP_OK;
+static char radioError[160] = "";
 static const Profile* active = nullptr;
 static uint32_t began=0, durationMs=0, lastHeartbeat=0, lastStatus=0;
 static String line;
@@ -46,13 +48,18 @@ void hello(uint32_t id) {
 std::string fromHex(const char* s) {
   std::string out; for(size_t i=0;s[i]&&s[i+1];i+=2) { char b[3]={s[i],s[i+1],0};out.push_back(char(strtoul(b,nullptr,16))); } return out;
 }
+bool radioFailure(const char* stage,int code) {
+  snprintf(radioError,sizeof(radioError),"%s failed (code %d)",stage,code);
+  return false;
+}
 bool startRadio(const Profile& p,int index,int channel,int power,int interval) {
+  radioError[0]='\0';
   if(p.wifi) {
-    if(!wifiReady) return false;
+    if(!wifiReady) return radioFailure("Wi-Fi initialization",wifiInitError);
     // Configure identity before starting the radio: no default ESP32 beacon can
     // accidentally satisfy an OUI rule during a negative-control test.
     uint8_t mac[6]={0x02,0x59,0x59,0x00,0x00,uint8_t(index+1)};
-    if(p.macPrefix[0]) { unsigned a,b,c; if(sscanf(p.macPrefix,"%x:%x:%x",&a,&b,&c)!=3)return false;mac[0]=a;mac[1]=b;mac[2]=c; }
+    if(p.macPrefix[0]) { unsigned a,b,c; if(sscanf(p.macPrefix,"%x:%x:%x",&a,&b,&c)!=3)return radioFailure("Wi-Fi address format",ESP_ERR_INVALID_ARG);mac[0]=a;mac[1]=b;mac[2]=c; }
     wifi_config_t config = {};
     memcpy(config.ap.ssid,p.ssid,strlen(p.ssid));
     config.ap.ssid_len=strlen(p.ssid);
@@ -60,21 +67,26 @@ bool startRadio(const Profile& p,int index,int channel,int power,int interval) {
     memcpy(config.ap.password,password,strlen(password));
     config.ap.channel=channel;config.ap.authmode=WIFI_AUTH_WPA2_PSK;
     config.ap.max_connection=1;config.ap.beacon_interval=100;
-    if(esp_wifi_set_mode(WIFI_MODE_AP)!=ESP_OK ||
-       esp_wifi_set_mac(WIFI_IF_AP,mac)!=ESP_OK ||
-       esp_wifi_set_config(WIFI_IF_AP,&config)!=ESP_OK ||
-       esp_wifi_start()!=ESP_OK || esp_wifi_set_max_tx_power(power*4)!=ESP_OK) return false;
+    esp_err_t rc;
+    if((rc=esp_wifi_set_mode(WIFI_MODE_AP))!=ESP_OK)return radioFailure("Wi-Fi AP mode",rc);
+    if((rc=esp_wifi_set_mac(WIFI_IF_AP,mac))!=ESP_OK)return radioFailure("Wi-Fi address",rc);
+    if((rc=esp_wifi_set_config(WIFI_IF_AP,&config))!=ESP_OK)return radioFailure("Wi-Fi AP configuration",rc);
+    if((rc=esp_wifi_start())!=ESP_OK)return radioFailure("Wi-Fi start",rc);
+    if((rc=esp_wifi_set_max_tx_power(power*4))!=ESP_OK)return radioFailure("Wi-Fi power",rc);
     char text[18];snprintf(text,sizeof(text),"%02X:%02X:%02X:%02X:%02X:%02X",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);address=text;
   } else {
     uint8_t mac[6]={uint8_t(index+1),0x00,0x00,0x59,0x59,0xC2};
-    if(ble_hs_id_set_rnd(mac)!=0) return false;
+    int rc=ble_hs_id_set_rnd(mac);
+    if(rc!=0) return radioFailure("BLE random address",rc);
     NimBLEAdvertisementData data;
     if(p.flags) data.setFlags(0x06);
     if(p.uuid) data.setCompleteServices(NimBLEUUID(p.uuid));
     if(p.uuid128[0]) data.setCompleteServices(NimBLEUUID(p.uuid128));
     if(p.name[0]) data.setName(p.name);
     if(p.mfgHex[0]) data.setManufacturerData(fromHex(p.mfgHex));
-    advertiser->setAdvertisementType(BLE_HCI_ADV_TYPE_ADV_NONCONN_IND);
+    // NimBLE-Arduino expects a GAP connection mode here, not an HCI PDU type.
+    // ADV_NONCONN_IND is 3; GAP accepts 0..2 and rejects 3 with BLE_HS_EINVAL.
+    advertiser->setAdvertisementType(BLE_GAP_CONN_MODE_NON);
     advertiser->setScanResponse(false);
     advertiser->setAdvertisementData(data);
     advertiser->setMinInterval(uint16_t(interval*1.6f));
@@ -82,7 +94,7 @@ bool startRadio(const Profile& p,int index,int channel,int power,int interval) {
     esp_power_level_t level=ESP_PWR_LVL_N12;
     if(power==-6)level=ESP_PWR_LVL_N6; if(power==0)level=ESP_PWR_LVL_N0; if(power==3)level=ESP_PWR_LVL_P3;
     NimBLEDevice::setPower(level,ESP_BLE_PWR_TYPE_ADV);
-    if(!advertiser->start()) return false;
+    if(!advertiser->start()) {snprintf(radioError,sizeof(radioError),"BLE advertising start failed; see USB console for stack errors");return false;}
     char text[18];snprintf(text,sizeof(text),"C2:59:59:00:00:%02X",index+1);address=text;
   }
   return true;
@@ -111,7 +123,7 @@ void command(const String& text) {
   const char* token=d["run"]|"";
   if(!token[0]||strlen(token)>64){ack(id,false,"Run token required (1 to 64 characters)");return;}
   stopRadio("replace");
-  if(!startRadio(p,index,channel,power,interval)) {stopRadio("radio_error");ack(id,false,"Radio could not start");return;}
+  if(!startRadio(p,index,channel,power,interval)) {stopRadio("radio_error");ack(id,false,radioError[0]?radioError:"Radio could not start");return;}
   active=&p;runToken=token;began=millis();durationMs=uint32_t(seconds)*1000;lastHeartbeat=began;running=true;
   ack(id,true);state("started");
 }
@@ -120,7 +132,7 @@ void setup() {
   esp_netif_init();esp_event_loop_create_default();
   esp_netif_create_default_wifi_ap();
   wifi_init_config_t wifiConfig=WIFI_INIT_CONFIG_DEFAULT();
-  wifiReady=esp_wifi_init(&wifiConfig)==ESP_OK;
+  wifiInitError=esp_wifi_init(&wifiConfig);wifiReady=wifiInitError==ESP_OK;
   if(wifiReady){esp_wifi_set_storage(WIFI_STORAGE_RAM);esp_wifi_set_mode(WIFI_MODE_NULL);}
   NimBLEDevice::init("YetiYell");
   // Fixed static-random lab identity, little-endian. No vendor OUI masquerading.

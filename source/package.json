@@ -1,12 +1,13 @@
 {
   "name": "yetiyell",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.4",
   "private": true,
   "type": "module",
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
     "test": "node --test tests/*.test.mjs",
-    "release": "python3 scripts/package.py"
+    "release": "python3 scripts/package.py",
+    "build:app": "node scripts/build_app.mjs"
   },
   "dependencies": {
     "esptool-js": "0.7.0",

@@ -1,6 +1,8 @@
-# YetiYell v1.0.0-rc.1
+# YetiYell v1.0.0-rc.4
 
 A self-contained ESP32 wireless signature test bench for SquachWatch. Flash a board in your browser, connect over USB, emit controlled BLE/Wi-Fi fixtures, run repeatable suites, and review detector observations. Static hosting only; all runtime code and firmware are bundled. No account, database, CDN, or telemetry is required when self-hosted.
+
+**Reflash required:** rc.4 corrects the BLE advertising mode in the transmitter firmware. Earlier firmware passed an HCI packet type to an API that requires a GAP connection mode, so NimBLE rejected BLE startup. Update the server files, disconnect the board, install the bundled rc.4 firmware from Set up, then reconnect. Updating the website alone cannot repair the board firmware.
 
 **Release candidate, not hardware-validated v1.0.** All three firmware builds and automated checks passed. Physical flashing, real-browser USB behavior, RF packet captures, and receiver acceptance have not been verified in this environment. `VALIDATION.md` records the evidence and remaining gates. The app includes an operator acceptance form in Field guide.
 
@@ -29,7 +31,9 @@ cd server
 python3 -m http.server 8080 --bind 127.0.0.1
 ```
 
-Open `http://localhost:8080` in Chrome or Edge. Opening the HTML with `file://` is unsupported. Serve `.mjs` and `sw.js` as JavaScript. Open the app in its own tab if an embedding host blocks serial access.
+Open `http://localhost:8080` in Chrome or Edge. Opening the HTML with `file://` is unsupported. Serve `app.js`, `boot.js`, and `sw.js` as JavaScript. The runtime is bundled into a classic script, so connecting no longer depends on the host recognizing `.mjs` files. Open the app in its own tab if an embedding host blocks serial access.
+
+If the USB chooser does not appear, select **Connection help** beside Connect ESP32. It checks HTTPS, Web Serial availability, and the browser's reported serial permissions policy, and provides copyable connection details. Use **Open app in browser tab** to leave an embedded viewer. Blocked environments show an explanation instead of silently disabling Connect. A persistent startup banner identifies missing scripts or profiles. The app cannot override browser or organization policies.
 
 To enable the in-app package download on your own host, copy the original release ZIP into `server/downloads/`. A ZIP cannot contain a recursive copy of itself; the folder includes this instruction. All operating features work without that optional copy.
 
@@ -40,6 +44,10 @@ To enable the in-app package download on your own host, copy the original releas
 3. If synchronization fails, hold BOOT while connecting, release after chip detection, and try the 115200-baud recovery option. Press EN/RESET after installation if needed. An interrupted write can be retried from the bootloader.
 4. Select Connect ESP32. The handshake checks protocol, stop limits, firmware version, and profile catalog before transmission is enabled. Any leftover run is stopped.
 5. Start Tile for 20 seconds and inspect SquachWatch's log. Open Results → Record to enter the observation.
+
+If the chooser opens but the app reports no firmware reply, select the board’s USB-to-UART entry (for example CP2102 or CH340). “Paired” only records browser permission; it does not establish installed firmware. Install through **Choose board & flash** if you have not done so. For an already-flashed board, release BOOT, tap EN/RESET, and reconnect. Connection help also offers **Reset board & reconnect**, which pulses the usual UART reset lines only on that explicit action; it never installs firmware or starts RF. Boards without compatible reset wiring need a manual EN/RESET press. Normal Connect does not pulse reset.
+
+Failed connections retain the phase, USB vendor/product IDs, bytes received, and the last 4,000 characters of serial output in **Connection details**. Bootloader and boot-error messages receive specific guidance. Save the USB console log if recovery fails. This diagnostic output cannot prove the firmware is absent merely because the board is silent.
 
 The app checks the board's transmitter state; it does not have live access to the receiver. A started or completed transmission never creates a passing detection result.
 
@@ -103,20 +111,22 @@ Pinned inputs: PlatformIO 6.2.0, platform-espressif32 6.10.0, Arduino ESP32 2.0.
 python3 -m pip install platformio==6.2.0
 npm ci
 npm run vendor
+npm run build:app
 python3 scripts/generate_firmware_profiles.py
-python3 -m platformio run -d firmware -e esp32dev -e esp32c3 -e esp32s3
+PLATFORMIO_SETTING_ENABLE_TELEMETRY=no python3 -m platformio run -d firmware -e esp32dev -e esp32c3 -e esp32s3
 python3 scripts/release_firmware.py
 python3 scripts/offline.py
 npm test
 g++ -std=c++11 tests/policy_test.cpp -o /tmp/yetiyell-policy-test
 /tmp/yetiyell-policy-test
 python3 scripts/verify_detector.py
+python3 scripts/verify_radio_contract.py
 python3 scripts/release_gate.py
 python3 scripts/package.py
 ```
 
-The oracle fetches three GPL-3.0 upstream files into a temporary directory and runs them as a separate test program. It accepts a local reference directory for offline testing. Nothing is linked into the transmitter or browser app.
+The radio-contract check uses the installed NimBLE-Arduino 1.4.3 setter and parameter validator as a separate native test. It rejects the previous HCI mode and accepts the production GAP mode; it does not test physical RF. The detector oracle fetches three GPL-3.0 upstream files into a temporary directory and runs them as a separate test program. It accepts a local reference directory for offline testing. Nothing is linked into the transmitter or browser app.
 
-Edit `dist/profiles.json`, regenerate the firmware table, rebuild all targets, and refresh firmware manifests together. Profile IDs retain their order because addresses depend on catalog index. The generator updates the catalog hash. Change version strings consistently with `release.json`; the release gate rejects stale versions and prevents an unvalidated stable release from packaging. Service-worker assets are generated after all runtime files are ready.
+Edit `dist/profiles.json`, regenerate the firmware table, rebuild all targets, and refresh firmware manifests together. Profile IDs retain their order because addresses depend on catalog index. The generator updates the catalog hash. After editing browser modules, run `npm run build:app` to refresh the delivered script. `release.json` records the app version and its required `firmwareVersion`; a browser-only fix may retain existing firmware. The release gate rejects inconsistent versions and prevents an unvalidated stable release from packaging. Service-worker assets are generated after all runtime files are ready.
 
 `PROTOCOL.md` defines the stable USB protocol. `WORKSPACE.md` documents schema migration. `CHANGELOG.md`, `ROADMAP.md`, and `VALIDATION.md` record the release work and limits. Original code is MIT licensed; dependencies retain their licenses. YetiYell is not affiliated with SquachWatch, Espressif, or any manufacturer represented by a fixture.

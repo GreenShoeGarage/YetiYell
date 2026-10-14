@@ -1,8 +1,8 @@
 {
-  "version": "1.0.0-rc.1",
-  "date": "2026-10-13",
+  "version": "1.0.0-rc.4",
+  "date": "2026-10-14",
   "nodeTests": {
-    "passed": 32,
+    "passed": 47,
     "failed": 0
   },
   "firmwareBuilds": [
@@ -13,11 +13,23 @@
   "upstreamOracle": {
     "profileChecks": 42,
     "boundaryChecks": 7,
-    "commit": "44ddd59e11940cb47ac5e223e383501936d50c60"
+    "commit": "44ddd59e11940cb47ac5e223e383501936d50c60",
+    "checkedAt": "2026-10-13"
   },
   "nativePolicy": "passed",
   "physicalHardware": "not tested",
   "realBrowser": "not tested",
   "RF": "not tested",
-  "stableReleaseApproved": false
+  "stableReleaseApproved": false,
+  "firmwareVersion": "1.0.0-rc.4",
+  "firmwareBuildDate": "2026-10-14",
+  "nativeChecksDate": "2026-10-14",
+  "reportedIssue": "USB connection works; firmware rejects radio start. Incorrect BLE advertising mode reproduced in the pinned NimBLE validator and corrected. Physical RF confirmation pending.",
+  "radioContract": {
+    "library": "NimBLE-Arduino 1.4.3",
+    "previousFirmwareRejected": true,
+    "productionModeAccepted": true,
+    "invalidHighDutyRejected": true
+  },
+  "buildTelemetry": false
 }

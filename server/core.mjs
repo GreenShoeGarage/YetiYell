@@ -1,4 +1,5 @@
-export const VERSION='1.0.0-rc.1';
+export const VERSION='1.0.0-rc.4';
+export const FIRMWARE_VERSION='1.0.0-rc.4';
 export const STORAGE_KEY='yetiyell.workspace.v1';
 export function validateSettings(input,radio){
  const s={duration:Number(input.duration),channel:Number(input.channel),power:Number(input.power),interval:Number(input.interval)};
