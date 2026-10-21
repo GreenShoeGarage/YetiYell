@@ -11,7 +11,7 @@ export async function loadRelease(boardId='esp32dev'){
  for(const part of manifest.parts){
   if(!/^[-_a-z0-9.]+\.bin$/.test(part.file)||!Number.isInteger(part.size)||part.size<=0||part.offset<end||part.offset+part.size>0x310000)throw Error('Invalid firmware part.');
   end=part.offset+part.size;
-  const r=await fetch(board.directory+part.file);if(!r.ok)throw Error('Firmware file missing: '+part.file);
+  const r=await fetch(board.directory+part.file,{cache:'reload'});if(!r.ok)throw Error('Firmware file missing: '+part.file);
   const data=new Uint8Array(await r.arrayBuffer());
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',data)),x=>x.toString(16).padStart(2,'0')).join('');
   if(hash!==part.sha256||data.length!==part.size)throw Error('Firmware integrity check failed: '+part.file);

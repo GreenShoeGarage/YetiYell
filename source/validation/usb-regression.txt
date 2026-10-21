@@ -1,0 +1,11 @@
+2026-10-20 — rc.4 regression reproduced against commit cedd205b27704df170aab1040f9138ef554d7ff4
+Original dist/serial.mjs, real Node timers and mocked serial Streams API.
+Injected missing status reply; hello, stop and every ping acknowledged normally.
+Observed: "Device stopped responding." after the first status timeout despite three successful ping replies.
+rc.5 follow-up: 57 Node tests passed. Includes three-minute virtual-time status-loss and periodic ping-loss checks. See software-tests.txt.
+Physical recurring disconnect not reproduced in this environment. Firmware source/images unchanged from rc.4.
+
+2026-10-20 — rc.6 follow-up
+Self-hosted app.js and sw.js HTTP response: Cache-Control public, max-age=604800; server versions app rc.5 and firmware rc.4. Current app.js has no old generic timeout message. User browser cache was not inspected.
+Actual rc.5 bundle reproduced early cancellation of a mocked confirmed radio run when its initial status acknowledgement is absent. Same delivered-bundle test passes with rc.6.
+62 Node checks pass, including scoped cache recovery and missing acknowledgement tests. Firmware source/images unchanged; physical RF and recurring disconnect not tested.

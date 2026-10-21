@@ -1,4 +1,4 @@
-export const VERSION='1.0.0-rc.4';
+export const VERSION='1.0.0-rc.6';
 export const FIRMWARE_VERSION='1.0.0-rc.4';
 export const STORAGE_KEY='yetiyell.workspace.v1';
 export function validateSettings(input,radio){

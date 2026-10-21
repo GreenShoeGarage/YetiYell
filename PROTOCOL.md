@@ -20,6 +20,18 @@ The start command establishes the initial heartbeat. While active, send `ping` m
 
 This is a trusted local USB interface, not a network API. Do not expose serial ports to an unauthenticated remote service.
 
-Protocol 1 remains newline JSON. The v1.0 app requires the exact firmware version declared by `FIRMWARE_VERSION` (also `release.json` → `firmwareVersion`) and its profile catalog before enabling Start. Browser app rc.4 requires firmware rc.4, which fixes BLE startup. Boards running rc.1 remain connected for identification but cannot start tests until reflashed. App and firmware version numbers may differ for browser-only fixes. Suites are browser orchestration: each step sends the same start/heartbeat/stop commands. Firmware never automatically advances or resumes a sequence. UART0 is used on all three builds; native USB CDC is disabled.
+Protocol 1 remains newline JSON. The v1.0 app requires the exact firmware version declared by `FIRMWARE_VERSION` (also `release.json` → `firmwareVersion`) and its profile catalog before enabling Start. Browser app rc.6 requires firmware rc.4, which fixes BLE startup. Boards running rc.1 remain connected for identification but cannot start tests until reflashed. App and firmware version numbers may differ for browser-only fixes. Suites are browser orchestration: each step sends the same start/heartbeat/stop commands. Firmware never automatically advances or resumes a sequence. UART0 is used on all three builds; native USB CDC is disabled.
 
 Radio-start rejection replies retain `event: ack`, `ok: false`, and an explanatory `error`. rc.4 identifies Wi-Fi setup stages and ESP-IDF return codes, BLE random-address errors, or BLE advertising-start failures. Error-level stack logs may appear between JSON lines; clients continue to ignore non-JSON lines. A failed start never emits `started`.
+
+## Browser connection monitoring (rc.5)
+
+The browser sends one in-flight ping at a time, normally every 1,200 ms after an acknowledgement, with a 2,500 ms reply timeout. The first missed reply enters a checking state and retries after 250 ms; the second consecutive missed ping closes the session. These are browser diagnostics, not changes to the firmware heartbeat deadline. Firmware continues to stop after 6,000 ms without a received ping.
+
+Status polling is independent and at most one request in flight. A successful ping permits a status poll when no state event arrived for 3,000 ms; streamed active-state events suppress redundant polls. Status timeouts are logged and do not themselves close USB. A write failure or fatal read error closes USB. Recoverable read errors release the reader and acquire the replacement Web Serial stream, discarding any partial old line. Expired queued commands cannot be sent later, and callbacks from a closed connection cannot act on a new connection. No connection recovery sends `start` or resets the board.
+
+Web Serial stream recovery follows [Chrome's documented read loop](https://developer.chrome.com/docs/capabilities/serial#read-from-a-serial-port).
+
+## Start confirmation (rc.6)
+
+A successful start acknowledgement means command acceptance, not independent RF proof. The client requires a matching run's `started` or running `status` event before presenting radio-start confirmation. If that state event arrives but its start/status acknowledgement is lost, a reply timeout is logged without stopping the confirmed run or resending Start. If neither state event arrives, a failed confirmation stops the test and records an error. Hardware RF reception is still a separate observation.

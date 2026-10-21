@@ -10,6 +10,11 @@ assert f'VERSION = "{fv}"' in (root/'firmware/src/main.cpp').read_text()
 assert v in (root/'dist/index.html').read_text()
 assert f"FIRMWARE_VERSION='{fv}'" in (root/'dist/core.mjs').read_text()
 assert (root/'dist/app.js').exists() and v in (root/'dist/app.js').read_text()
+assert (root/f'dist/app-{v}.js').read_bytes()==(root/'dist/app.js').read_bytes()
+assert (root/f'dist/boot-{v}.js').read_bytes()==(root/'dist/boot.js').read_bytes()
+assert f'./app-{v}.js' in (root/'dist/index.html').read_text()
+assert f'./boot-{v}.js' in (root/'dist/index.html').read_text()
+assert v in (root/'dist/refresh-app.html').read_text()
 assert f"yetiyell-{v}" in (root/'dist/sw.js').read_text()
 if '-' not in v:
  assert release.get('hardwareValidated') is True,'Stable release blocked: physical acceptance is not validated.'

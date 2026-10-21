@@ -22,6 +22,10 @@ export function usbFailure(error,environment){
  if(error?.serial?.portOpened){
   const serial=error.serial,text=serial.textTail||'';
   let code='device',title='The serial port opened; the board did not connect',detail=String(error.message);
+  if(serial.firmware){
+   code='link-lost';title='The connected board stopped communicating';
+   detail=String(error.message)+' The app had already verified YetiYell '+serial.firmware+'. Connection details include the timed-out command, missed replies, read errors, and recent board output. Save the USB console log if it happens again; this message alone does not identify a firmware reset or power fault.';
+  }
   if(error.code==='YETI_HANDSHAKE_TIMEOUT'){
    code='firmware';title='USB opened; YetiYell firmware did not reply';
    detail='Connect ESP32 operates a board that already has YetiYell installed. If you have not installed it, go to Set up and use Choose board & flash. If it is already installed, release BOOT, tap EN/RESET, then reconnect. Select the board’s USB-to-UART port, such as CP2102 or CH340, rather than a Bluetooth or audio port.';

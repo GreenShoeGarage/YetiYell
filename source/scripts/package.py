@@ -18,6 +18,6 @@ for p in sorted(root.iterdir()):
   if p.suffix in ['.md','.csv'] or p.name in ['LICENSE','release.json']:entries[prefix+p.name]=p
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
  for name,p in sorted(entries.items()):
-  info=zipfile.ZipInfo(name,date_time=(2026,10,14,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED;info.external_attr=0o100644<<16;z.writestr(info,p.read_bytes())
+  info=zipfile.ZipInfo(name,date_time=(2026,10,20,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED;info.external_attr=0o100644<<16;z.writestr(info,p.read_bytes())
 with zipfile.ZipFile(archive) as z:assert z.testzip() is None
 print(archive);print(f'{archive.stat().st_size:,} bytes; SHA-256 {hashlib.sha256(archive.read_bytes()).hexdigest()}')

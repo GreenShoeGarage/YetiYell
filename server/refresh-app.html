@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Refresh YetiYell app files</title><style>body{font:17px/1.6 system-ui,sans-serif;background:#101613;color:#e8eee8;max-width:680px;margin:8vh auto;padding:24px}h1{line-height:1.15;font-size:36px}a{color:#b6e382}button{font:inherit;background:#b6e382;color:#101613;border:0;border-radius:6px;padding:12px 20px;cursor:pointer}button:disabled{opacity:.5;cursor:default}label{display:block;margin:24px 0}#status{white-space:pre-wrap}small{color:#a9b6ab}</style></head><body><small>YETIYELL / 1.0.0-rc.6</small><h1>Refresh the app files.</h1><p>Use this if an update still shows an old version or the old “Device stopped responding” message.</p><p>Disconnect the ESP32 and close your other YetiYell tabs first. This refreshes only YetiYell’s cached files in this folder. Your saved runs, notes, settings, and ESP32 firmware stay as they are.</p><label><input type="checkbox" id="closed"> My ESP32 is disconnected and my other YetiYell tabs are closed.</label><button id="refresh" disabled>Refresh app files</button><p id="status" role="status"></p><a id="open" hidden>Open the refreshed YetiYell app →</a><script>
+const button=document.getElementById('refresh'),closed=document.getElementById('closed'),status=document.getElementById('status'),openLink=document.getElementById('open');
+closed.addEventListener('change',()=>button.disabled=!closed.checked);
+button.addEventListener('click',async()=>{
+ if(!closed.checked)return;button.disabled=true;openLink.hidden=true;status.textContent='Refreshing YetiYell app files…';
+ const base=new URL('./',location.href);
+ try{
+  if('serviceWorker'in navigator){for(const registration of await navigator.serviceWorker.getRegistrations())if(registration.scope===base.href)await registration.unregister();}
+  if('caches'in window){for(const key of await caches.keys())if(key.startsWith('yetiyell-')){const cache=await caches.open(key);for(const request of await cache.keys())if(request.url.startsWith(base.href))await cache.delete(request);}}
+  const next=new URL('index.html',base);next.searchParams.set('fresh',String(Date.now()));
+  const response=await fetch(next.href,{cache:'reload'});if(!response.ok)throw Error('The server returned HTTP '+response.status+'. Check that the server folder was uploaded completely.');
+  const page=new DOMParser().parseFromString(await response.text(),'text/html'),version=page.documentElement.dataset.appVersion;
+  if(version!=='1.0.0-rc.6')throw Error('The server is not serving the complete 1.0.0-rc.6 release yet. Upload all files inside server/ and try again.');
+  const script=page.getElementById('appScript')?.getAttribute('src');if(script!=='./app-1.0.0-rc.6.js')throw Error('The page and app script do not match. Upload the complete server/ folder.');
+  const code=await fetch(new URL(script,base).href,{cache:'reload'});if(!code.ok)throw Error('The versioned app script is missing. Upload the complete server/ folder.');
+  status.textContent='Ready. Open YetiYell below and confirm app 1.0.0-rc.6. Firmware rc.4 is still correct; no reflash is needed.';openLink.href=next.href;openLink.hidden=false;
+ }catch(error){status.textContent=error.message;button.disabled=false;}
+});
+</script></body></html>

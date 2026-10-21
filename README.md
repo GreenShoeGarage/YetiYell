@@ -1,8 +1,8 @@
-# YetiYell v1.0.0-rc.4
+# YetiYell v1.0.0-rc.6
 
 A self-contained ESP32 wireless signature test bench for SquachWatch. Flash a board in your browser, connect over USB, emit controlled BLE/Wi-Fi fixtures, run repeatable suites, and review detector observations. Static hosting only; all runtime code and firmware are bundled. No account, database, CDN, or telemetry is required when self-hosted.
 
-**Reflash required:** rc.4 corrects the BLE advertising mode in the transmitter firmware. Earlier firmware passed an HCI packet type to an API that requires a GAP connection mode, so NimBLE rejected BLE startup. Update the server files, disconnect the board, install the bundled rc.4 firmware from Set up, then reconnect. Updating the website alone cannot repair the board firmware.
+**Update recovery and transmission-start fix:** rc.6 updates the browser app while keeping firmware rc.4. Upload every file inside `server/`, disconnect the ESP32, and close other YetiYell tabs. Open `refresh-app.html` in your uploaded YetiYell folder, select the checkbox, click **Refresh app files**, then follow **Open the refreshed YetiYell app**. Confirm the header shows rc.6 before reconnecting. This removes only this folder's YetiYell worker registration and cached responses; it keeps saved runs, notes, settings, and board firmware. **No reflash is needed for a board already running rc.4.** Earlier firmware still needs the bundled rc.4 BLE radio-start fix from Set up.
 
 **Release candidate, not hardware-validated v1.0.** All three firmware builds and automated checks passed. Physical flashing, real-browser USB behavior, RF packet captures, and receiver acceptance have not been verified in this environment. `VALIDATION.md` records the evidence and remaining gates. The app includes an operator acceptance form in Field guide.
 
@@ -31,7 +31,7 @@ cd server
 python3 -m http.server 8080 --bind 127.0.0.1
 ```
 
-Open `http://localhost:8080` in Chrome or Edge. Opening the HTML with `file://` is unsupported. Serve `app.js`, `boot.js`, and `sw.js` as JavaScript. The runtime is bundled into a classic script, so connecting no longer depends on the host recognizing `.mjs` files. Open the app in its own tab if an embedding host blocks serial access.
+Open `http://localhost:8080` in Chrome or Edge. Opening the HTML with `file://` is unsupported. Serve `app.js`, `boot.js`, and `sw.js` as JavaScript. The runtime is bundled into a classic script with a release-specific filename, so connecting no longer depends on the host recognizing `.mjs` files. Open the app in its own tab if an embedding host blocks serial access.
 
 If the USB chooser does not appear, select **Connection help** beside Connect ESP32. It checks HTTPS, Web Serial availability, and the browser's reported serial permissions policy, and provides copyable connection details. Use **Open app in browser tab** to leave an embedded viewer. Blocked environments show an explanation instead of silently disabling Connect. A persistent startup banner identifies missing scripts or profiles. The app cannot override browser or organization policies.
 
@@ -48,6 +48,14 @@ To enable the in-app package download on your own host, copy the original releas
 If the chooser opens but the app reports no firmware reply, select the board’s USB-to-UART entry (for example CP2102 or CH340). “Paired” only records browser permission; it does not establish installed firmware. Install through **Choose board & flash** if you have not done so. For an already-flashed board, release BOOT, tap EN/RESET, and reconnect. Connection help also offers **Reset board & reconnect**, which pulses the usual UART reset lines only on that explicit action; it never installs firmware or starts RF. Boards without compatible reset wiring need a manual EN/RESET press. Normal Connect does not pulse reset.
 
 Failed connections retain the phase, USB vendor/product IDs, bytes received, and the last 4,000 characters of serial output in **Connection details**. Bootloader and boot-error messages receive specific guidance. Save the USB console log if recovery fails. This diagnostic output cannot prove the firmware is absent merely because the board is silent.
+
+If USB drops after initially working, open **Connection help** or **USB console → Save log**. rc.5 separates heartbeat checks from status polling: an absent status reply no longer disconnects a board that answers pings. One missed ping triggers a bounded retry; a second consecutive failure closes the session. New starts are blocked while checking the link. Recoverable serial read errors reacquire the reader without resetting the board. A genuine board restart or removal still interrupts the run, and tests never restart automatically. Firmware still stops RF within six seconds of its last received heartbeat.
+
+Connection details now retain the verified firmware version, timed-out command and phase, missed ping/status counts, reader errors, and recent board text. The generic timeout banner alone cannot distinguish USB/driver/power trouble from a firmware fault.
+
+A board-confirmed `started` or running `status` event for the current run now takes precedence over a missing command acknowledgement. The app no longer stops that confirmed run merely because the initial status acknowledgement was lost. An acknowledgement without a matching running event does not establish a transmission, and the app stops and reports that uncertainty. Actual RF reception still needs the separate detector.
+
+The header and runtime are checked for version consistency. Release-specific script filenames prevent a host's long HTTP-cache lifetime from loading an older application bundle. Offline installation fetches assets with `cache: reload`, and the worker update check bypasses its HTTP cache. `refresh-app.html` is deliberately never served from the YetiYell worker cache. USB console exports include app/firmware versions, URL, browser, command/read diagnostics, and the captured serial log.
 
 The app checks the board's transmitter state; it does not have live access to the receiver. A started or completed transmission never creates a passing detection result.
 

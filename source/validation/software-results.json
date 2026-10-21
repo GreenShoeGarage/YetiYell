@@ -1,8 +1,8 @@
 {
-  "version": "1.0.0-rc.4",
-  "date": "2026-10-14",
+  "version": "1.0.0-rc.6",
+  "date": "2026-10-20",
   "nodeTests": {
-    "passed": 47,
+    "passed": 62,
     "failed": 0
   },
   "firmwareBuilds": [
@@ -24,12 +24,29 @@
   "firmwareVersion": "1.0.0-rc.4",
   "firmwareBuildDate": "2026-10-14",
   "nativeChecksDate": "2026-10-14",
-  "reportedIssue": "USB connection works; firmware rejects radio start. Incorrect BLE advertising mode reproduced in the pinned NimBLE validator and corrected. Physical RF confirmation pending.",
+  "reportedIssue": "Old timeout message and absent RF reported after rc.5. Server rc.5 confirmed with week-long script HTTP caching. Browser cache contents unknown. Initial-status-ack loss cancelling a confirmed run reproduced against rc.5 and corrected.",
   "radioContract": {
     "library": "NimBLE-Arduino 1.4.3",
     "previousFirmwareRejected": true,
     "productionModeAccepted": true,
     "invalidHighDutyRejected": true
   },
-  "buildTelemetry": false
+  "buildTelemetry": false,
+  "connectionRegression": {
+    "oldStatusTimeoutReproduced": true,
+    "statusLossVirtualMs": 180000,
+    "periodicPingLossVirtualMs": 180000,
+    "physicalRecurrence": "not tested"
+  },
+  "cacheRecovery": {
+    "hostScriptMaxAgeSeconds": 604800,
+    "releaseSpecificScripts": true,
+    "scopedCacheRecoveryPassed": true,
+    "realBrowserCache": "not inspected"
+  },
+  "startConfirmation": {
+    "priorBundleRegressionReproduced": true,
+    "confirmedStateSurvivesMissingAck": true,
+    "acknowledgementAloneRejected": true
+  }
 }

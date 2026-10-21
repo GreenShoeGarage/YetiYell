@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.0-rc.6 — 2026-10-20
+
+- Observed `Cache-Control: public, max-age=604800` on the self-hosted app script. Fixed upgrade exposure to stale HTTP cache with release-specific app/boot filenames, page/runtime version checks, and fresh offline-asset requests.
+- Added `refresh-app.html`: unregisters only this app folder's worker and removes only its YetiYell cached responses. Preserves local storage and board firmware; verifies the new page/script are present before providing the reopen link.
+- Reproduced and fixed a separate startup regression: rc.5 could stop an already-confirmed running radio after losing its initial status acknowledgement. Matching run-state events now take precedence over missing start/status acknowledgements; Start is never resent automatically.
+- Rejects an acknowledgement-only start without inventing a confirmed transmission. Console exports now include runtime version and connection diagnostics.
+- 62 Node checks pass. Required/bundled firmware remains rc.4, unchanged. Physical confirmation of the user's recurring disconnect/RF symptoms is still outstanding.
+
+## 1.0.0-rc.5 — 2026-10-20
+
+- Fixed web-app connection loss caused by a single missing status acknowledgement, even while heartbeat pings still succeeded. Reproduced against rc.4 with a mock serial port.
+- Separate status telemetry from non-overlapping heartbeat checks; retry one missed ping before disconnecting. Keep the firmware's six-second RF timeout unchanged.
+- Recover from Web Serial replacement read streams after nonfatal errors. Preserve fatal USB removal and board-restart interruption.
+- Prevent expired queued commands and old-session callbacks from reaching a later connection.
+- Show a temporary checking state, block new starts until a reply arrives, and retain runtime diagnostics in Connection help.
+- Browser-only release: bundled and required firmware remains rc.4; no reflash needed on an rc.4 board. Firmware images and catalog are unchanged.
+- Added simulated three-minute connection checks and delivered-bundle regressions. Physical confirmation of the reported recurring disconnect remains outstanding.
+
 ## 1.0.0-rc.4 — 2026-10-14
 
 **Firmware update: reflash the transmitter.**
